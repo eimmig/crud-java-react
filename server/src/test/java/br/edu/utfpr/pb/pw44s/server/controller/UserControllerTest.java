@@ -12,41 +12,90 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+import java.util.List;
+
+@SpringBootTest(webEnvironment =
+        SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 public class UserControllerTest {
+
     @Autowired
-    TestRestTemplate restTemplate;
+    TestRestTemplate testRestTemplate;
 
     @Autowired
     UserRepository userRepository;
 
     @BeforeEach
-    public void setup() {
+    public void cleanup() {
         userRepository.deleteAll();
     }
 
+    //methodName_condition_expectedBehaviour
     @Test
-    public void shouldSaveUserCorrectly() {
+    public void postUser_whenUserIsValid_receiveOK() {
         User user = new User();
         user.setUsername("test-user");
-        user.setDisplayName("Test Display");
-        user.setPassword("test-p4ssword");
+        user.setDisplayName("test-Display");
+        user.setPassword("P4ssword");
 
-        ResponseEntity<Object> response = restTemplate.postForEntity("/users", user, Object.class);
+        ResponseEntity<Object> response =
+                testRestTemplate.postForEntity("/users", user, Object.class);
 
         Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    public void shouldSaveAndCountUsersCorrectly() {
+    public void putUser_whenUserIsValid_userSavedToDatabase() {
         User user = new User();
         user.setUsername("test-user");
-        user.setDisplayName("Updated Display");
-        user.setPassword("updated-p4ssword");
+        user.setDisplayName("test-Display");
+        user.setPassword("P4ssword");
 
-        restTemplate.postForEntity("/users", user, Object.class);
+        ResponseEntity<Object> response =
+                testRestTemplate.postForEntity("/users", user, Object.class);
 
         Assertions.assertThat(userRepository.count()).isEqualTo(1);
     }
+
+    @Test
+    public void putUser_whenUserIsValid_passwordIsHashedInDatabase() {
+        User user = new User();
+        user.setUsername("test-user");
+        user.setDisplayName("test-Display");
+        user.setPassword("P4ssword");
+
+        testRestTemplate.postForEntity("/users", user, Object.class);
+
+        List<User> users = userRepository.findAll();
+        User userDB =  users.get(0);
+
+        Assertions.assertThat(user.getPassword()).isNotEqualTo(userDB.getPassword());
+    }
+
+    @Test
+    public void putUser_whenUserHasNullUsername_receiveBadRequest() {
+        User user = new User();
+        user.setUsername( null );
+        user.setDisplayName("test-Display");
+        user.setPassword("P4ssword");
+
+        ResponseEntity<Object> response =
+                testRestTemplate.postForEntity("/users", user, Object.class);
+
+        Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    public void putUser_whenUserHasUsernameWithLessThanRequired_receiveBadRequest() {
+        User user = new User();
+        user.setUsername( "abc" );
+        user.setDisplayName("test-Display");
+        user.setPassword("P4ssword");
+
+        ResponseEntity<Object> response =
+                testRestTemplate.postForEntity("/users", user, Object.class);
+
+        Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
 }
